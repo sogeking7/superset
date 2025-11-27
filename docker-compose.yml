@@ -44,22 +44,22 @@ x-common-build: &common-build
     BUILD_TRANSLATIONS: ${BUILD_TRANSLATIONS:-false}
 
 services:
-  nginx:
-    env_file:
-      - path: docker/.env # default
-        required: true
-      - path: docker/.env-local # optional override
-        required: false
-    image: nginx:latest
-    container_name: superset_nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/nginx/templates:/etc/nginx/templates:ro
+  # nginx:
+  #   env_file:
+  #     - path: docker/.env # default
+  #       required: true
+  #     - path: docker/.env-local # optional override
+  #       required: false
+  #   image: nginx:latest
+  #   container_name: superset_nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   volumes:
+  #     - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./docker/nginx/templates:/etc/nginx/templates:ro
 
   redis:
     image: redis:7
@@ -112,7 +112,7 @@ services:
     container_name: superset_websocket
     build: ./superset-websocket
     ports:
-      - 8080:8080
+      - 8090:8090
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -136,7 +136,7 @@ services:
       # do not use this docker compose in production
       - ./docker/superset-websocket/config.json:/home/superset-websocket/config.json
     environment:
-      - PORT=8080
+      - PORT=8090
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_SSL=false

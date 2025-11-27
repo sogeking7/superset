@@ -50,6 +50,36 @@ def df_to_excel(df: pd.DataFrame, **kwargs: Any) -> Any:
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df.to_excel(writer, **kwargs)
 
+        workbook = writer.book
+        worksheet = writer.sheets[kwargs.get("sheet_name", "Sheet1")]
+        
+        # Create number format with thousand separators
+        number_format = workbook.add_format({"num_format": "#,##0.00"})
+        
+        has_index = kwargs.get("index", True)
+        index_offset = 1 if has_index else 0
+        
+        # Format numeric columns and set column widths
+        for idx, col in enumerate(df.columns):
+            col_idx = idx + index_offset
+            is_numeric = pd.api.types.is_numeric_dtype(df[col])
+            
+            # Write numeric values with formatting
+            if is_numeric:
+                for row_idx, value in enumerate(df[col], start=1):
+                    if pd.notna(value):
+                        try:
+                            worksheet.write_number(row_idx, col_idx, float(value), number_format)
+                        except (ValueError, TypeError):
+                            pass  # Keep the original value from df.to_excel
+            
+            # Auto-size columns
+            max_len = len(str(col))
+            for value in df[col].astype(str):
+                max_len = max(max_len, len(value))
+            
+            worksheet.set_column(col_idx, col_idx, min(max_len+8, 50))
+
     return output.getvalue()
 
 

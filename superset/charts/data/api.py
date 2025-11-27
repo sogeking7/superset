@@ -376,22 +376,37 @@ class ChartDataRestApi(ChartRestApi):
 
                 return XlsxResponse(data, headers=generate_download_headers("xlsx"))
 
-            # return multi-query results bundled as a zip file
-            def _process_data(query_data: Any) -> Any:
-                if result_format == ChartDataResultFormat.CSV:
-                    encoding = app.config["CSV_EXPORT"].get("encoding", "utf-8")
-                    return query_data.encode(encoding)
-                return query_data
+            # Merge multiple query results into a single file
+            # This handles cases like "show_totals" which generates separate queries
+            # for data and summary rows
+            if is_csv_format:
+                # CSV: simple string concatenation with separator
+                merged_data = result["queries"][0]["data"]
+                for query in result["queries"][1:]:
+                    merged_data += query["data"]
+                return CsvResponse(merged_data, headers=generate_download_headers("csv"))
 
-            files = {
-                f"query_{idx + 1}.{result_format}": _process_data(query["data"])
-                for idx, query in enumerate(result["queries"])
-            }
-            return Response(
-                create_zip(files),
-                headers=generate_download_headers("zip"),
-                mimetype="application/zip",
-            )
+            # XLSX: merge DataFrames
+            import io
+            import pandas as pd
+            
+            # Read all query Excel data into DataFrames
+            dfs = []
+            for query in result["queries"]:
+                excel_bytes = query["data"]
+                df = pd.read_excel(io.BytesIO(excel_bytes))
+                dfs.append(df)
+            
+            # Merge: first df + remaining dfs
+            merged_df = dfs[0]
+            for df in dfs[1:]:
+                merged_df = pd.concat([merged_df, df], ignore_index=True)
+            
+            # Convert merged DataFrame back to Excel
+            from superset.utils import excel as excel_utils
+            merged_excel_data = excel_utils.df_to_excel(merged_df, index=False)
+            
+            return XlsxResponse(merged_excel_data, headers=generate_download_headers("xlsx"))
 
         if result_format == ChartDataResultFormat.JSON:
             queries = result["queries"]
